@@ -1,4 +1,4 @@
-name: Build Sultan GS201 Kernel
+name: Build Sultan GS201 Kernel (plain make)
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout kernel source
+      - name: Checkout source
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -21,49 +21,42 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            bc bison flex libssl-dev \
-            libc6-dev libncurses5-dev \
-            ccache git python3 \
-            build-essential \
-            dwarves \
-            lz4 rsync
+            make clang lld llvm \
+            git bc flex bison gawk \
+            lz4 cpio xz-utils \
+            libssl-dev libelf-dev libdw-dev \
+            libc6-dev-amd64-cross \
+            libncurses5-dev libncurses-dev \
+            pahole
 
-      - name: Fetch Android kernel build scripts
+      - name: Show clang version
         run: |
-          echo "Cloning kernel/build into ./build ..."
-          git clone https://android.googlesource.com/kernel/build build
-          echo "Contents of ./build:"
-          ls -R build || true
-          echo "Check for build/build.sh:"
-          if [ -f build/build.sh ]; then
-            echo "build/build.sh found ✅"
-          else
-            echo "build/build.sh is missing ❌"
-            exit 1
-          fi
+          clang --version || true
+          llvm-ar --version || true
 
-      - name: Build kernel (GKI aarch64)
-        env:
-          LTO: thin
-          BUILD_CONFIG: build.config.gki.aarch64
+      - name: Configure kernel (gki_defconfig)
         run: |
-          ls -R .
-          echo "Making build.sh executable..."
-          chmod +x build/build.sh
-          echo "Running build.sh..."
-          ./build/build.sh -j$(nproc) V=1
+          mkdir -p out
+          make LLVM=1 ARCH=arm64 O=out gki_defconfig
 
-      - name: List build outputs
+      - name: Build kernel
         run: |
-          echo "==== dist/ ===="
-          ls -R dist || echo "no dist dir"
-          echo "==== out/ ===="
-          ls -R out || echo "no out dir"
+          make LLVM=1 ARCH=arm64 O=out -j$(nproc)
 
-      - name: Upload build artifacts
+      - name: Collect build outputs
+        run: |
+          mkdir -p dist
+          # Copy common arm64 kernel images if they exist
+          cp out/arch/arm64/boot/Image* dist/ 2>/dev/null || true
+          echo "=== dist/ ==="
+          ls -R dist || echo "dist is empty"
+          echo "=== out/arch/arm64/boot ==="
+          ls -R out/arch/arm64/boot || echo "boot dir missing"
+
+      - name: Upload kernel artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sultan-gs201-kernel-dist
+          name: sultan-gs201-kernel-make
           path: |
             dist/**
-            out/**/dist/**
+            out/arch/arm64/boot/**
