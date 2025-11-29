@@ -1,10 +1,10 @@
 name: Build Sultan GS201 Kernel
 
 on:
-  workflow_dispatch:    # manual run button in Actions tab
+  workflow_dispatch:    # lets you run it manually from the Actions tab
   push:
     branches:
-      - 16.0.0-sultan   # auto-build when you push to this branch
+      - 16.0.0-sultan   # run automatically when you push to this branch
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
           ref: 16.0.0-sultan
 
-      - name: Install build deps
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -28,17 +28,6 @@ jobs:
             dwarves \
             lz4 rsync
 
-      # Optional: cache the output to speed up builds
-      - name: Cache kernel out/dist
-        uses: actions/cache@v4
-        with:
-          path: |
-            out
-            dist
-          key: ${{ runner.os }}-gs201-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-gs201-
-
       - name: Build kernel (GKI aarch64)
         env:
           LTO: thin
@@ -47,12 +36,14 @@ jobs:
           chmod +x build/build.sh
           ./build/build.sh -j$(nproc) V=1
 
-      - name: List dist output
+      - name: List build outputs
         run: |
-          ls -R out || true
-          ls -R dist || true
+          echo "==== dist/ ===="
+          ls -R dist || echo "no dist dir"
+          echo "==== out/ ===="
+          ls -R out || echo "no out dir"
 
-      - name: Upload kernel artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: sultan-gs201-kernel-dist
