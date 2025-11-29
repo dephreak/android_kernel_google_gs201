@@ -1,10 +1,10 @@
 name: Build Sultan GS201 Kernel
 
 on:
-  workflow_dispatch:    # lets you run it manually from the Actions tab
+  workflow_dispatch:
   push:
     branches:
-      - 16.0.0-sultan   # run automatically when you push to this branch
+      - 16.0.0-sultan
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           ref: 16.0.0-sultan
 
       - name: Install build dependencies
@@ -28,9 +28,16 @@ jobs:
             dwarves \
             lz4 rsync
 
+      - name: Fetch Android kernel build scripts
+        run: |
+          # clone Google's kernel/build repo into ./build
+          git clone https://android.googlesource.com/kernel/build build
+          ls build
+
       - name: Build kernel (GKI aarch64)
         env:
           LTO: thin
+          # our build.config.gki.aarch64 is at repo root, not under common/
           BUILD_CONFIG: build.config.gki.aarch64
         run: |
           chmod +x build/build.sh
