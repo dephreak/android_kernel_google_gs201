@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout source
+      - name: Checkout kernel source
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
@@ -30,17 +30,27 @@ jobs:
 
       - name: Fetch Android kernel build scripts
         run: |
-          # clone Google's kernel/build repo into ./build
+          echo "Cloning kernel/build into ./build ..."
           git clone https://android.googlesource.com/kernel/build build
-          ls build
+          echo "Contents of ./build:"
+          ls -R build || true
+          echo "Check for build/build.sh:"
+          if [ -f build/build.sh ]; then
+            echo "build/build.sh found ✅"
+          else
+            echo "build/build.sh is missing ❌"
+            exit 1
+          fi
 
       - name: Build kernel (GKI aarch64)
         env:
           LTO: thin
-          # our build.config.gki.aarch64 is at repo root, not under common/
           BUILD_CONFIG: build.config.gki.aarch64
         run: |
+          ls -R .
+          echo "Making build.sh executable..."
           chmod +x build/build.sh
+          echo "Running build.sh..."
           ./build/build.sh -j$(nproc) V=1
 
       - name: List build outputs
