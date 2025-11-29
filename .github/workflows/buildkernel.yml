@@ -34,10 +34,11 @@ jobs:
           clang --version || true
           llvm-ar --version || true
 
-      - name: Configure kernel (gki_defconfig)
+      - name: Configure kernel (sultan_working_defconfig)
         run: |
           mkdir -p out
-          make LLVM=1 ARCH=arm64 O=out gki_defconfig
+          make LLVM=1 ARCH=arm64 O=out sultan_working_defconfig
+
 
       - name: Build kernel
         run: |
