@@ -1,0 +1,61 @@
+name: Build Sultan GS201 Kernel
+
+on:
+  workflow_dispatch:    # manual run button in Actions tab
+  push:
+    branches:
+      - 16.0.0-sultan   # auto-build when you push to this branch
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: 16.0.0-sultan
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex libssl-dev \
+            libc6-dev libncurses5-dev \
+            ccache git python3 \
+            build-essential \
+            dwarves \
+            lz4 rsync
+
+      # Optional: cache the output to speed up builds
+      - name: Cache kernel out/dist
+        uses: actions/cache@v4
+        with:
+          path: |
+            out
+            dist
+          key: ${{ runner.os }}-gs201-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-gs201-
+
+      - name: Build kernel (GKI aarch64)
+        env:
+          LTO: thin
+          BUILD_CONFIG: build.config.gki.aarch64
+        run: |
+          chmod +x build/build.sh
+          ./build/build.sh -j$(nproc) V=1
+
+      - name: List dist output
+        run: |
+          ls -R out || true
+          ls -R dist || true
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sultan-gs201-kernel-dist
+          path: |
+            dist/**
+            out/**/dist/**
